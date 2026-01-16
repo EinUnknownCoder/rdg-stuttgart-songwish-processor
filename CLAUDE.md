@@ -42,7 +42,13 @@ The project consists of a single main script `songwish_processor.py` with the fo
 ### Message Generation
 
 - `create_contact_url()` - Generates Instagram or WhatsApp contact URLs
-- `create_message()` - Generates bilingual (DE/EN) messages based on validation results
+- `create_message()` - Generates bilingual (DE/EN) messages based on validation results, includes artist + title for verification
+- `get_greeting_name()` - Extracts Instagram name for personalized greetings
+
+### Output Logic
+
+- **Requester/Dancer**: Uses Instagram name if available, otherwise falls back to email
+- **Description**: Populated from "Teil des Liedes" field, "Other (Please use...)" placeholder is removed, defaults to "Chorus" if empty
 
 ## File Structure
 

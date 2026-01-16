@@ -63,6 +63,7 @@ Die Eingabedatei muss folgende Spalten enthalten:
 | YT URL | YouTube-URL des ersten Songs |
 | Künstler | Künstlername des ersten Songs |
 | Songname | Titel des ersten Songs |
+| Teil des Liedes | Gewünschter Songabschnitt (z.B. Chorus 1, Dancebreak) |
 | Start Timestamp | Startzeit (MM:SS:00) |
 | End Timestamp | Endzeit (MM:SS:00) |
 | Anmerkung | Zusätzliche Anmerkungen |
@@ -76,7 +77,7 @@ Die Eingabedatei muss folgende Spalten enthalten:
 |--------|--------------|
 | # | Laufende Nummer |
 | Contact URL | Direkter Link zur Kontaktaufnahme (Instagram/WhatsApp) |
-| Message | Vorgefertigte Nachricht in der gewählten Sprache |
+| Message | Vorgefertigte Nachricht in der gewählten Sprache (enthält Artist + Title zur Verifizierung) |
 | Status | OK oder Fehler |
 | Artist | Künstlername |
 | Title | Songtitel |
@@ -89,7 +90,10 @@ Gleiche Spalten wie `request.xlsx` (Songlist) plus:
 - **Anmerkung**: Anmerkung aus dem Songwunsch
 - **Errors**: Validierungsfehler
 
-Zeilen mit Fehlern sind rot markiert.
+Besonderheiten:
+- **Description**: Enthält "Teil des Liedes" (z.B. Chorus 1, Dancebreak). Standardwert: "Chorus"
+- **Requester/Dancer**: Zeigt Instagram-Name wenn vorhanden, sonst E-Mail-Adresse
+- Zeilen mit Fehlern sind rot markiert
 
 ## Blockliste (blocked_songs.xlsx)
 
