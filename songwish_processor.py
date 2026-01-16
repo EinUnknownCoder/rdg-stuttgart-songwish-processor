@@ -432,6 +432,7 @@ def process_songwishes(input_file, output_file, form_url=FORM_URL):
         url1 = row.get('YT URL', '')
         artist1 = row.get('Künstler', '')
         title1 = row.get('Songname', '')
+        part1 = row.get('Teil des Liedes', '')
         start1 = row.get('Start Timestamp', '')
         end1 = row.get('End Timestamp', '')
         note1 = row.get('Anmerkung', '')
@@ -442,6 +443,7 @@ def process_songwishes(input_file, output_file, form_url=FORM_URL):
         url2 = row.get('YT URL.1', '')
         artist2 = row.get('Künstler.1', '')
         title2 = row.get('Songname.1', '')
+        part2 = row.get('Teil des Liedes.1', '')
         start2 = row.get('Start Timestamp.1', '')
         end2 = row.get('End Timestamp.1', '')
         note2 = row.get('Anmerkung.1', '')
@@ -460,6 +462,7 @@ def process_songwishes(input_file, output_file, form_url=FORM_URL):
             'url1': clean_url1,
             'artist1': artist1,
             'title1': title1,
+            'part1': part1,
             'start1': start1,
             'end1': end1,
             'note1': note1,
@@ -468,6 +471,7 @@ def process_songwishes(input_file, output_file, form_url=FORM_URL):
             'url2': clean_url2,
             'artist2': artist2,
             'title2': title2,
+            'part2': part2,
             'start2': start2,
             'end2': end2,
             'note2': note2,
@@ -555,7 +559,7 @@ def process_songwishes(input_file, output_file, form_url=FORM_URL):
         ws_songlist.cell(row=row_num, column=1, value=result['url1'])
         ws_songlist.cell(row=row_num, column=2, value=result['artist1'])
         ws_songlist.cell(row=row_num, column=3, value=result['title1'])
-        ws_songlist.cell(row=row_num, column=4, value="")  # Description
+        ws_songlist.cell(row=row_num, column=4, value=result['part1'] if pd.notna(result['part1']) else "")  # Description (Teil des Liedes)
         # Use Instagram name if available, otherwise email
         requester = result['instagram'] if pd.notna(result['instagram']) and result['instagram'] else result['email']
         if requester and str(requester).startswith('@'):
@@ -590,7 +594,7 @@ def process_songwishes(input_file, output_file, form_url=FORM_URL):
         ws_songlist.cell(row=row_num, column=1, value=result['url2'])
         ws_songlist.cell(row=row_num, column=2, value=result['artist2'])
         ws_songlist.cell(row=row_num, column=3, value=result['title2'])
-        ws_songlist.cell(row=row_num, column=4, value="")  # Description
+        ws_songlist.cell(row=row_num, column=4, value=result['part2'] if pd.notna(result['part2']) else "")  # Description (Teil des Liedes)
         # Use Instagram name if available, otherwise email
         requester = result['instagram'] if pd.notna(result['instagram']) and result['instagram'] else result['email']
         if requester and str(requester).startswith('@'):
