@@ -547,7 +547,11 @@ def process_songwishes(input_file, output_file, form_url=FORM_URL):
         ws_songlist.cell(row=row_num, column=2, value=result['artist1'])
         ws_songlist.cell(row=row_num, column=3, value=result['title1'])
         ws_songlist.cell(row=row_num, column=4, value="")  # Description
-        ws_songlist.cell(row=row_num, column=5, value=result['email'])  # Requester
+        # Use Instagram name if available, otherwise email
+        requester = result['instagram'] if pd.notna(result['instagram']) and result['instagram'] else result['email']
+        if requester and str(requester).startswith('@'):
+            requester = str(requester)[1:]
+        ws_songlist.cell(row=row_num, column=5, value=requester)  # Requester
         ws_songlist.cell(row=row_num, column=6, value=start_seconds // 60)  # Start minute
         ws_songlist.cell(row=row_num, column=7, value=start_seconds % 60)  # Start second
         ws_songlist.cell(row=row_num, column=8, value=end_seconds // 60)  # End minute
@@ -578,7 +582,11 @@ def process_songwishes(input_file, output_file, form_url=FORM_URL):
         ws_songlist.cell(row=row_num, column=2, value=result['artist2'])
         ws_songlist.cell(row=row_num, column=3, value=result['title2'])
         ws_songlist.cell(row=row_num, column=4, value="")  # Description
-        ws_songlist.cell(row=row_num, column=5, value=result['email'])  # Requester
+        # Use Instagram name if available, otherwise email
+        requester = result['instagram'] if pd.notna(result['instagram']) and result['instagram'] else result['email']
+        if requester and str(requester).startswith('@'):
+            requester = str(requester)[1:]
+        ws_songlist.cell(row=row_num, column=5, value=requester)  # Requester
         ws_songlist.cell(row=row_num, column=6, value=start_seconds // 60)  # Start minute
         ws_songlist.cell(row=row_num, column=7, value=start_seconds % 60)  # Start second
         ws_songlist.cell(row=row_num, column=8, value=end_seconds // 60)  # End minute
