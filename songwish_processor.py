@@ -15,7 +15,7 @@ from openpyxl.styles import PatternFill, Font, Alignment, Border, Side
 from openpyxl.utils.dataframe import dataframe_to_rows
 
 # Configuration
-FORM_URL = "https://forms.gle/YOUR_FORM_URL_HERE"  # Replace with actual form URL
+FORM_URL = "https://forms.gle/KTg2MvaRo8TFVK7q7"  # Replace with actual form URL
 MAX_SONG_DURATION_SECONDS = 90
 FIRST_GUARANTEED_COUNT = 50
 
@@ -226,7 +226,7 @@ def check_blocked_song(artist, title, blocked_songs):
     title_norm = normalize_text(title)
 
     if (artist_norm, title_norm) in blocked_songs:
-        return False, f"Song ist auf der Blockliste / Song is on the blocked list"
+        return False, f"Song ist auf der 18+ Liste / Song is on the 18+ list"
 
     return True, None
 
@@ -277,9 +277,9 @@ def validate_song(url, artist, title, start_ts, end_ts, blocked_songs):
 
 def create_contact_url(row):
     """Create contact URL based on preferred communication method."""
-    preference = row.get('Bevorzugte Kommunikation', '')
+    preference = row.get('Bevorzugte Kommunikation\nPreferred communication', '')
 
-    if preference == 'Instagram':
+    if 'Instagram' in str(preference):
         instagram = row.get('Instagram @Name', '')
         if pd.notna(instagram) and instagram:
             # Remove @ if present
@@ -288,7 +288,7 @@ def create_contact_url(row):
                 instagram = instagram[1:]
             return f"https://www.instagram.com/{instagram}"
 
-    elif preference == 'WhatsApp':
+    elif 'WhatsApp' in str(preference):
         phone = row.get('WhatsApp Number', '')
         if pd.notna(phone) and phone:
             # Clean phone number (remove spaces, dashes, etc.)
@@ -299,7 +299,7 @@ def create_contact_url(row):
             return f"https://wa.me/{phone.replace('+', '')}"
 
     # Fallback to other contact method
-    other = row.get('Weitere Kontaktmöglichkeit', '')
+    other = row.get('Weitere Kontaktmöglichkeit\nFurther contact information', '')
     if pd.notna(other) and other:
         return str(other)
 
@@ -308,9 +308,9 @@ def create_contact_url(row):
 
 def get_greeting_name(row):
     """Get name for greeting based on contact method."""
-    preference = row.get('Bevorzugte Kommunikation', '')
+    preference = row.get('Bevorzugte Kommunikation\nPreferred communication', '')
 
-    if preference == 'Instagram':
+    if 'Instagram' in str(preference):
         instagram = row.get('Instagram @Name', '')
         if pd.notna(instagram) and instagram:
             name = str(instagram).strip()
@@ -412,9 +412,9 @@ def process_songwishes(input_file, output_file, form_url=FORM_URL):
     print(f"Reading {input_file}...")
     df = pd.read_excel(input_file)
 
-    # Skip first row if it contains translations
-    if pd.notna(df.iloc[0].get('Sprache der Regeln')) and 'Language' in str(df.iloc[0].get('Sprache der Regeln')):
-        df = df.iloc[1:].reset_index(drop=True)
+    # Skip first row if it contains translations (no longer needed with new format)
+    # if pd.notna(df.iloc[0].get('Sprache der Regeln')) and 'Language' in str(df.iloc[0].get('Sprache der Regeln')):
+    #     df = df.iloc[1:].reset_index(drop=True)
 
     print(f"Processing {len(df)} song wishes...")
 
@@ -430,34 +430,34 @@ def process_songwishes(input_file, output_file, form_url=FORM_URL):
 
         # First song
         url1 = row.get('YT URL', '')
-        artist1 = row.get('Künstler', '')
-        title1 = row.get('Songname', '')
-        part1 = row.get('Teil des Liedes', '')
+        artist1 = row.get('Künstler\nArtist', '')
+        title1 = row.get('Songname\nSong Title', '')
+        part1 = row.get('Teil des Liedes\nPart of the Song', '')
         start1 = row.get('Start Timestamp', '')
         end1 = row.get('End Timestamp', '')
-        note1 = row.get('Anmerkung', '')
+        note1 = row.get('Anmerkung\nAdditional Information', '')
 
         errors1, clean_url1 = validate_song(url1, artist1, title1, start1, end1, blocked_songs)
 
         # Second song
         url2 = row.get('YT URL.1', '')
-        artist2 = row.get('Künstler.1', '')
-        title2 = row.get('Songname.1', '')
-        part2 = row.get('Teil des Liedes.1', '')
+        artist2 = row.get('Künstler\nArtist.1', '')
+        title2 = row.get('Songname\nSong Title.1', '')
+        part2 = row.get('Teil des Liedes\nPart of the Song.1', '')
         start2 = row.get('Start Timestamp.1', '')
         end2 = row.get('End Timestamp.1', '')
-        note2 = row.get('Anmerkung.1', '')
+        note2 = row.get('Anmerkung\nAdditional Information.1', '')
 
         errors2, clean_url2 = validate_song(url2, artist2, title2, start2, end2, blocked_songs) if pd.notna(url2) and url2 else ([], None)
 
         results.append({
             'row_index': idx,
             'email': row.get('Email Address', ''),
-            'language': row.get('Sprache der Regeln', ''),
-            'contact_pref': row.get('Bevorzugte Kommunikation', ''),
+            'language': row.get('Sprache der Regeln\nLanguage of the Rules', ''),
+            'contact_pref': row.get('Bevorzugte Kommunikation\nPreferred communication', ''),
             'instagram': row.get('Instagram @Name', ''),
             'whatsapp': row.get('WhatsApp Number', ''),
-            'other_contact': row.get('Weitere Kontaktmöglichkeit', ''),
+            'other_contact': row.get('Weitere Kontaktmöglichkeit\nFurther contact information', ''),
             # Song 1
             'url1': clean_url1,
             'artist1': artist1,
@@ -478,7 +478,7 @@ def process_songwishes(input_file, output_file, form_url=FORM_URL):
             'errors2': errors2,
             # Contact
             'contact_url': create_contact_url(row),
-            'message': create_message(row, errors1, row.get('Sprache der Regeln', ''), form_url, artist1, title1),
+            'message': create_message(row, errors1, row.get('Sprache der Regeln\nLanguage of the Rules', ''), form_url, artist1, title1),
         })
 
     # Create output Excel
