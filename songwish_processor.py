@@ -321,10 +321,11 @@ def get_greeting_name(row):
     return None
 
 
-def create_message(row, errors, language, form_url):
+def create_message(row, errors, language, form_url, artist, title):
     """Create message based on validation result and language."""
     name = get_greeting_name(row)
     is_german = '🇩🇪' in str(language) or 'Deutsch' in str(language)
+    song_info = f"{artist} - {title}"
 
     if is_german:
         if name:
@@ -337,6 +338,8 @@ def create_message(row, errors, language, form_url):
 
 Vielen Dank für deinen Songwunsch beim RDG Stuttgart! 🎵
 
+Dein Songwunsch: {song_info}
+
 Dein Songwunsch wurde erfolgreich geprüft und wird auf die Playlist aufgenommen, sobald du auf diese Nachricht antwortest/reagierst.
 
 Wir freuen uns auf dich! 🎉"""
@@ -345,6 +348,8 @@ Wir freuen uns auf dich! 🎉"""
             message = f"""{greeting}
 
 Vielen Dank für deinen Songwunsch beim RDG Stuttgart! 🎵
+
+Dein Songwunsch: {song_info}
 
 Leider gibt es ein Problem mit deinem Songwunsch:
 
@@ -366,6 +371,8 @@ Bei Fragen kannst du dich gerne melden! 💬"""
 
 Thank you for your song wish at RDG Stuttgart! 🎵
 
+Your song wish: {song_info}
+
 Your song wish has been successfully verified and will be added to the playlist once you reply/react to this message.
 
 We look forward to seeing you! 🎉"""
@@ -374,6 +381,8 @@ We look forward to seeing you! 🎉"""
             message = f"""{greeting}
 
 Thank you for your song wish at RDG Stuttgart! 🎵
+
+Your song wish: {song_info}
 
 Unfortunately, there is a problem with your song wish:
 
@@ -465,7 +474,7 @@ def process_songwishes(input_file, output_file, form_url=FORM_URL):
             'errors2': errors2,
             # Contact
             'contact_url': create_contact_url(row),
-            'message': create_message(row, errors1, row.get('Sprache der Regeln', ''), form_url),
+            'message': create_message(row, errors1, row.get('Sprache der Regeln', ''), form_url, artist1, title1),
         })
 
     # Create output Excel
