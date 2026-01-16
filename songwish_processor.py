@@ -559,7 +559,13 @@ def process_songwishes(input_file, output_file, form_url=FORM_URL):
         ws_songlist.cell(row=row_num, column=1, value=result['url1'])
         ws_songlist.cell(row=row_num, column=2, value=result['artist1'])
         ws_songlist.cell(row=row_num, column=3, value=result['title1'])
-        ws_songlist.cell(row=row_num, column=4, value=result['part1'] if pd.notna(result['part1']) else "")  # Description (Teil des Liedes)
+        # Description (Teil des Liedes) - clean up "Other" placeholder
+        part1_value = result['part1'] if pd.notna(result['part1']) else ""
+        if 'Other (Please use "Additional Information" Text Field)' in str(part1_value):
+            part1_value = str(part1_value).replace('Other (Please use "Additional Information" Text Field)', '').strip()
+        if not part1_value:
+            part1_value = "Chorus"
+        ws_songlist.cell(row=row_num, column=4, value=part1_value)
         # Use Instagram name if available, otherwise email
         requester = result['instagram'] if pd.notna(result['instagram']) and result['instagram'] else result['email']
         if requester and str(requester).startswith('@'):
@@ -594,7 +600,13 @@ def process_songwishes(input_file, output_file, form_url=FORM_URL):
         ws_songlist.cell(row=row_num, column=1, value=result['url2'])
         ws_songlist.cell(row=row_num, column=2, value=result['artist2'])
         ws_songlist.cell(row=row_num, column=3, value=result['title2'])
-        ws_songlist.cell(row=row_num, column=4, value=result['part2'] if pd.notna(result['part2']) else "")  # Description (Teil des Liedes)
+        # Description (Teil des Liedes) - clean up "Other" placeholder
+        part2_value = result['part2'] if pd.notna(result['part2']) else ""
+        if 'Other (Please use "Additional Information" Text Field)' in str(part2_value):
+            part2_value = str(part2_value).replace('Other (Please use "Additional Information" Text Field)', '').strip()
+        if not part2_value:
+            part2_value = "Chorus"
+        ws_songlist.cell(row=row_num, column=4, value=part2_value)
         # Use Instagram name if available, otherwise email
         requester = result['instagram'] if pd.notna(result['instagram']) and result['instagram'] else result['email']
         if requester and str(requester).startswith('@'):
