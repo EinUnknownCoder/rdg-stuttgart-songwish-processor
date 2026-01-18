@@ -100,6 +100,8 @@ def get_youtube_info(url):
         'no_warnings': True,
         'extract_flat': False,
         'skip_download': True,
+        'socket_timeout': 30,  # 30 second timeout for network operations
+        'source_address': '0.0.0.0',  # Force IPv4 to avoid YouTube connection issues
     }
 
     try:

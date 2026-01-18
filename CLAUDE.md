@@ -28,7 +28,7 @@ The project consists of a single main script `songwish_processor.py` with the fo
 - `normalize_text()` - Normalizes text by removing special chars, spaces, accents and converting to lowercase for fuzzy matching
 - `clean_youtube_url()` - Removes playlist parameters (`&list`, `&index`) from YouTube URLs
 - `parse_timestamp()` - Parses timestamps in MM:SS:00 or MM:SS format to seconds
-- `get_youtube_info()` - Fetches video metadata using yt-dlp
+- `get_youtube_info()` - Fetches video metadata using yt-dlp (uses IPv4 and 30s timeout)
 - `validate_song()` - Main validation function that runs all checks
 
 ### Validation Checks
@@ -69,3 +69,10 @@ In `songwish_processor.py`:
 - pandas, openpyxl - Excel file handling
 - yt-dlp - YouTube video metadata extraction
 - requests - HTTP requests
+
+## Troubleshooting
+
+### yt-dlp hangs on YouTube requests
+- **Cause**: IPv6 connection issues with YouTube
+- **Solution**: Script uses `source_address: '0.0.0.0'` to force IPv4
+- **Manual test**: `yt-dlp --force-ipv4 --skip-download --print title "URL"`

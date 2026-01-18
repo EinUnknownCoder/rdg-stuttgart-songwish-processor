@@ -121,6 +121,18 @@ Songs in dieser Liste werden automatisch abgelehnt.
 
 5. **URL-Bereinigung**: Playlist-Parameter (`&list=...`) werden automatisch entfernt
 
+## Bekannte Probleme & Lösungen
+
+### yt-dlp hängt beim Abrufen von YouTube-Daten
+
+**Problem**: Das Programm hängt beim ersten Songwunsch.
+
+**Ursache**: IPv6-Verbindungsprobleme zu YouTube.
+
+**Lösung**: Das Script verwendet `source_address: '0.0.0.0'` um IPv4 zu erzwingen. Falls weiterhin Probleme auftreten:
+- Prüfen ob yt-dlp aktuell ist: `pip install --upgrade yt-dlp`
+- Netzwerkverbindung testen: `curl -I https://www.youtube.com`
+
 ## Lizenz
 
 MIT License
