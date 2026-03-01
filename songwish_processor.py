@@ -7,7 +7,7 @@ Validates song wish requests and generates output Excel with messages and songli
 
 import re
 import unicodedata
-from urllib.parse import urlparse, parse_qs, urlencode
+from urllib.parse import urlparse, parse_qs, urlencode, quote
 import pandas as pd
 import yt_dlp
 from openpyxl import Workbook
@@ -211,15 +211,16 @@ def load_blocked_songs():
     """Load blocked songs list from Excel file."""
     try:
         df = pd.read_excel(BLOCKED_SONGS_FILE)
-        blocked = set()
+        blocked = {}
         for _, row in df.iterrows():
             artist = normalize_text(row.get('Artist', ''))
             title = normalize_text(row.get('Title', ''))
+            grund = row.get('Grund', '')
             if artist and title:
-                blocked.add((artist, title))
+                blocked[(artist, title)] = grund if pd.notna(grund) else ''
         return blocked
     except FileNotFoundError:
-        return set()
+        return {}
 
 
 def check_blocked_song(artist, title, blocked_songs):
@@ -228,7 +229,7 @@ def check_blocked_song(artist, title, blocked_songs):
     title_norm = normalize_text(title)
 
     if (artist_norm, title_norm) in blocked_songs:
-        return False, f"Song ist auf der 18+ Liste / Song is on the 18+ list"
+        return False, f"Das Lied befindet sich auf der Liste der gesperrten Songs (z.B. weil es 18+ ist) / The song is on the list of blocked songs (e.g. because it is 18+)"
 
     return True, None
 
@@ -278,7 +279,11 @@ def validate_song(url, artist, title, start_ts, end_ts, blocked_songs):
 
 
 def create_contact_url(row):
-    """Create contact URL based on preferred communication method."""
+    """Create contact URL based on preferred communication method.
+
+    Returns:
+        tuple: (url, contact_type) where contact_type is 'instagram', 'whatsapp', or 'other'
+    """
     preference = row.get('Bevorzugte Kommunikation\nPreferred communication', '')
 
     if 'Instagram' in str(preference):
@@ -288,7 +293,7 @@ def create_contact_url(row):
             instagram = str(instagram).strip()
             if instagram.startswith('@'):
                 instagram = instagram[1:]
-            return f"https://www.instagram.com/{instagram}"
+            return f"https://www.instagram.com/{instagram}", 'instagram'
 
     elif 'WhatsApp' in str(preference):
         phone = row.get('WhatsApp Number', '')
@@ -298,14 +303,14 @@ def create_contact_url(row):
             # Ensure it starts with country code
             if not phone.startswith('+'):
                 phone = '+' + phone
-            return f"https://wa.me/{phone.replace('+', '')}"
+            return f"https://wa.me/{phone.replace('+', '')}", 'whatsapp'
 
     # Fallback to other contact method
     other = row.get('Weitere Kontaktmöglichkeit\nFurther contact information', '')
     if pd.notna(other) and other:
-        return str(other)
+        return str(other), 'other'
 
-    return ""
+    return "", 'other'
 
 
 def get_greeting_name(row):
@@ -409,6 +414,143 @@ def create_blocked_songs_template():
         print(f"Created blocked songs template: {BLOCKED_SONGS_FILE}")
 
 
+def generate_messages_html(results, output_html_file):
+    """Generate an HTML file with clickable send buttons for WhatsApp and Instagram."""
+    import html as html_module
+
+    rows_html = []
+    for i, result in enumerate(results[:FIRST_GUARANTEED_COUNT]):
+        has_errors = bool(result['errors1'])
+        status_class = 'error' if has_errors else 'ok'
+        status_text = 'Fehler' if has_errors else 'OK'
+        artist = html_module.escape(str(result['artist1']) if pd.notna(result['artist1']) else '')
+        title = html_module.escape(str(result['title1']) if pd.notna(result['title1']) else '')
+        song = f"{artist} - {title}"
+
+        # Requester display
+        instagram = result.get('instagram', '')
+        requester = ''
+        if pd.notna(instagram) and instagram:
+            requester = str(instagram).strip()
+            if requester.startswith('@'):
+                requester = requester[1:]
+        if not requester:
+            email = result.get('email', '')
+            requester = str(email) if pd.notna(email) and email else ''
+        requester = html_module.escape(requester)
+
+        contact_type = result.get('contact_type', 'other')
+        contact_url = result.get('contact_url', '')
+        message = result['message']
+        # Escape message for embedding in JS data attribute
+        message_escaped = html_module.escape(message)
+
+        if contact_type == 'whatsapp':
+            wa_url = contact_url + '?text=' + quote(message, safe='')
+            button_html = (
+                f'<a href="{html_module.escape(wa_url)}" target="_blank" class="btn btn-whatsapp">'
+                f'\U0001f4e9 Senden</a>'
+            )
+        elif contact_type == 'instagram':
+            button_html = (
+                f'<button class="btn btn-instagram" '
+                f'data-message="{message_escaped}" '
+                f'data-url="{html_module.escape(contact_url)}" '
+                f'onclick="copyAndOpen(this)">'
+                f'\U0001f4cb Kopieren &amp; \u00d6ffnen</button>'
+            )
+        else:
+            contact_display = html_module.escape(contact_url) if contact_url else '-'
+            button_html = f'<span class="contact-info">{contact_display}</span>'
+
+        rows_html.append(
+            f'<tr class="{status_class}">'
+            f'<td>{i + 1}</td>'
+            f'<td><span class="badge {status_class}">{status_text}</span></td>'
+            f'<td>{requester}</td>'
+            f'<td>{song}</td>'
+            f'<td>{button_html}</td>'
+            f'</tr>'
+        )
+
+    html_content = f'''<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RDG Stuttgart - Songwish Messages</title>
+<style>
+  body {{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; margin: 20px; background: #f5f5f5; }}
+  h1 {{ color: #333; }}
+  table {{ border-collapse: collapse; width: 100%; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }}
+  th {{ background: #444; color: white; padding: 10px 12px; text-align: left; }}
+  td {{ padding: 8px 12px; border-bottom: 1px solid #eee; vertical-align: middle; }}
+  tr.ok {{ background: #f0fff0; }}
+  tr.error {{ background: #fff0f0; }}
+  tr:hover {{ filter: brightness(0.97); }}
+  .badge {{ padding: 3px 8px; border-radius: 4px; font-size: 0.85em; font-weight: bold; }}
+  .badge.ok {{ background: #4caf50; color: white; }}
+  .badge.error {{ background: #f44336; color: white; }}
+  .btn {{ display: inline-block; padding: 6px 14px; border-radius: 6px; text-decoration: none;
+          font-size: 0.9em; font-weight: 500; cursor: pointer; border: none; color: white; }}
+  .btn-whatsapp {{ background: #25d366; }}
+  .btn-whatsapp:hover {{ background: #1da851; }}
+  .btn-instagram {{ background: #e1306c; }}
+  .btn-instagram:hover {{ background: #c13584; }}
+  .btn.copied {{ background: #888 !important; }}
+  .contact-info {{ color: #666; font-size: 0.9em; }}
+</style>
+</head>
+<body>
+<h1>RDG Stuttgart - Songwish Messages</h1>
+<p>{min(len(results), FIRST_GUARANTEED_COUNT)} Nachrichten (erste {FIRST_GUARANTEED_COUNT} garantierte Requests)</p>
+<table>
+<thead>
+  <tr><th>#</th><th>Status</th><th>Requester</th><th>Song</th><th>Aktion</th></tr>
+</thead>
+<tbody>
+{"".join(rows_html)}
+</tbody>
+</table>
+<script>
+function copyAndOpen(btn) {{
+  var message = btn.getAttribute("data-message");
+  var url = btn.getAttribute("data-url");
+  navigator.clipboard.writeText(message).then(function() {{
+    var original = btn.innerHTML;
+    btn.innerHTML = "\\u2705 Kopiert!";
+    btn.classList.add("copied");
+    setTimeout(function() {{
+      btn.innerHTML = original;
+      btn.classList.remove("copied");
+    }}, 2000);
+    window.open(url, "_blank");
+  }}).catch(function() {{
+    // Fallback for older browsers
+    var ta = document.createElement("textarea");
+    ta.value = message;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
+    btn.innerHTML = "\\u2705 Kopiert!";
+    btn.classList.add("copied");
+    setTimeout(function() {{
+      btn.innerHTML = "\\U0001f4cb Kopieren & \\u00d6ffnen";
+      btn.classList.remove("copied");
+    }}, 2000);
+    window.open(url, "_blank");
+  }});
+}}
+</script>
+</body>
+</html>'''
+
+    with open(output_html_file, 'w', encoding='utf-8') as f:
+        f.write(html_content)
+    print(f"HTML messages saved to: {output_html_file}")
+
+
 def process_songwishes(input_file, output_file, form_url=FORM_URL):
     """Main processing function."""
     print(f"Reading {input_file}...")
@@ -452,6 +594,8 @@ def process_songwishes(input_file, output_file, form_url=FORM_URL):
 
         errors2, clean_url2 = validate_song(url2, artist2, title2, start2, end2, blocked_songs) if pd.notna(url2) and url2 else ([], None)
 
+        contact_url, contact_type = create_contact_url(row)
+
         results.append({
             'row_index': idx,
             'email': row.get('Email Address', ''),
@@ -479,8 +623,10 @@ def process_songwishes(input_file, output_file, form_url=FORM_URL):
             'note2': note2,
             'errors2': errors2,
             # Contact
-            'contact_url': create_contact_url(row),
+            'contact_url': contact_url,
+            'contact_type': contact_type,
             'message': create_message(row, errors1, row.get('Sprache der Regeln\nLanguage of the Rules', ''), form_url, artist1, title1),
+            'ok_message': create_message(row, [], row.get('Sprache der Regeln\nLanguage of the Rules', ''), form_url, artist1, title1),
         })
 
     # Create output Excel
@@ -493,7 +639,7 @@ def process_songwishes(input_file, output_file, form_url=FORM_URL):
     ws_messages.title = "Messages"
 
     # Headers
-    headers = ['#', 'Contact URL', 'Message', 'Status', 'Artist', 'Title', 'Errors']
+    headers = ['#', 'Contact URL', 'Message', 'Status', 'Artist', 'Title', 'Errors', 'OK Message']
     for col, header in enumerate(headers, 1):
         cell = ws_messages.cell(row=1, column=col, value=header)
         cell.font = Font(bold=True)
@@ -515,10 +661,11 @@ def process_songwishes(input_file, output_file, form_url=FORM_URL):
         ws_messages.cell(row=row_num, column=5, value=result['artist1'])
         ws_messages.cell(row=row_num, column=6, value=result['title1'])
         ws_messages.cell(row=row_num, column=7, value="; ".join(result['errors1']) if result['errors1'] else "")
+        ws_messages.cell(row=row_num, column=8, value=result['ok_message'])
 
         # Color coding
         fill = error_fill if has_errors else success_fill
-        for col in range(1, 8):
+        for col in range(1, 9):
             ws_messages.cell(row=row_num, column=col).fill = fill
 
     # Adjust column widths
@@ -529,6 +676,7 @@ def process_songwishes(input_file, output_file, form_url=FORM_URL):
     ws_messages.column_dimensions['E'].width = 20
     ws_messages.column_dimensions['F'].width = 30
     ws_messages.column_dimensions['G'].width = 50
+    ws_messages.column_dimensions['H'].width = 80
 
     # Sheet 2: Songlist
     ws_songlist = wb.create_sheet("Songlist")
@@ -613,7 +761,7 @@ def process_songwishes(input_file, output_file, form_url=FORM_URL):
         requester = result['instagram'] if pd.notna(result['instagram']) and result['instagram'] else result['email']
         if requester and str(requester).startswith('@'):
             requester = str(requester)[1:]
-        ws_songlist.cell(row=row_num, column=5, value=requester)  # Requester
+        ws_songlist.cell(row=row_num, column=5, value=f"Pool: {requester}")  # Requester (second wish)
         ws_songlist.cell(row=row_num, column=6, value=start_seconds // 60)  # Start minute
         ws_songlist.cell(row=row_num, column=7, value=start_seconds % 60)  # Start second
         ws_songlist.cell(row=row_num, column=8, value=end_seconds // 60)  # End minute
@@ -645,6 +793,10 @@ def process_songwishes(input_file, output_file, form_url=FORM_URL):
     # Save
     wb.save(output_file)
     print(f"Output saved to: {output_file}")
+
+    # Generate HTML messages file
+    html_file = output_file.rsplit('.', 1)[0] + '_messages.html'
+    generate_messages_html(results, html_file)
 
     # Print summary
     total_errors_song1 = sum(1 for r in results if r['errors1'])
