@@ -126,8 +126,8 @@ def check_is_lyric_video(video_info):
     if not video_info or 'error' in video_info:
         return False, "Video konnte nicht abgerufen werden / Could not fetch video"
 
-    title = video_info.get('title', '').lower()
-    description = video_info.get('description', '').lower()
+    title = (video_info.get('title') or '').lower()
+    description = (video_info.get('description') or '').lower()
     tags = [t.lower() for t in video_info.get('tags', [])] if video_info.get('tags') else []
 
     # Positive indicators for lyric video
@@ -686,7 +686,8 @@ def process_songwishes(input_file, output_file, form_url=FORM_URL):
         'YouTube-URL', 'Artist', 'Title', 'Description', 'Requester/Dancer',
         'Start: Minute', 'Start: Second', 'End: Minute', 'End: Seconds',
         'Start in Seconds', 'End in Seconds',
-        '#', 'Anmerkung', 'Errors'
+        '#', 'Anmerkung', 'Errors',
+        'Category', 'Duration', 'Artist CAPS', 'Title CAPS', 'Timestamp'
     ]
 
     for col, header in enumerate(songlist_headers, 1):
@@ -725,15 +726,25 @@ def process_songwishes(input_file, output_file, form_url=FORM_URL):
         ws_songlist.cell(row=row_num, column=7, value=start_seconds % 60)  # Start second
         ws_songlist.cell(row=row_num, column=8, value=end_seconds // 60)  # End minute
         ws_songlist.cell(row=row_num, column=9, value=end_seconds % 60)  # End second
-        ws_songlist.cell(row=row_num, column=10, value=start_seconds)
-        ws_songlist.cell(row=row_num, column=11, value=end_seconds)
+        ws_songlist.cell(row=row_num, column=10).value = f'=F{row_num}*60+G{row_num}'
+        ws_songlist.cell(row=row_num, column=11).value = f'=H{row_num}*60+I{row_num}'
         ws_songlist.cell(row=row_num, column=12, value=song_counter)
         ws_songlist.cell(row=row_num, column=13, value=result['note1'] if pd.notna(result['note1']) else "")
         ws_songlist.cell(row=row_num, column=14, value="; ".join(result['errors1']) if result['errors1'] else "")
+        # Category: Top 50 for first guaranteed songs, Pool for rest
+        ws_songlist.cell(row=row_num, column=15, value="Top 50" if song_counter <= FIRST_GUARANTEED_COUNT else "Pool")
+        # Duration formula: End - Start + 10
+        ws_songlist.cell(row=row_num, column=16).value = f'=K{row_num}-J{row_num}+10'
+        # Artist CAPS formula
+        ws_songlist.cell(row=row_num, column=17).value = f'=UPPER(B{row_num})'
+        # Title CAPS formula
+        ws_songlist.cell(row=row_num, column=18).value = f'=UPPER(C{row_num})'
+        # Timestamp formula: m:ss - m:ss
+        ws_songlist.cell(row=row_num, column=19).value = f'=INT(J{row_num}/60)&":"&TEXT(MOD(J{row_num},60),"00")&" - "&INT(K{row_num}/60)&":"&TEXT(MOD(K{row_num},60),"00")'
 
         # Mark errors with red background
         if result['errors1']:
-            for col in range(1, 15):
+            for col in range(1, 20):
                 ws_songlist.cell(row=row_num, column=col).fill = error_fill
 
         row_num += 1
@@ -766,15 +777,25 @@ def process_songwishes(input_file, output_file, form_url=FORM_URL):
         ws_songlist.cell(row=row_num, column=7, value=start_seconds % 60)  # Start second
         ws_songlist.cell(row=row_num, column=8, value=end_seconds // 60)  # End minute
         ws_songlist.cell(row=row_num, column=9, value=end_seconds % 60)  # End second
-        ws_songlist.cell(row=row_num, column=10, value=start_seconds)
-        ws_songlist.cell(row=row_num, column=11, value=end_seconds)
+        ws_songlist.cell(row=row_num, column=10).value = f'=F{row_num}*60+G{row_num}'
+        ws_songlist.cell(row=row_num, column=11).value = f'=H{row_num}*60+I{row_num}'
         ws_songlist.cell(row=row_num, column=12, value=song_counter)
         ws_songlist.cell(row=row_num, column=13, value=result['note2'] if pd.notna(result['note2']) else "")
         ws_songlist.cell(row=row_num, column=14, value="; ".join(result['errors2']) if result['errors2'] else "")
+        # Category: Second wishes are always Pool
+        ws_songlist.cell(row=row_num, column=15, value="Pool")
+        # Duration formula: End - Start + 10
+        ws_songlist.cell(row=row_num, column=16).value = f'=K{row_num}-J{row_num}+10'
+        # Artist CAPS formula
+        ws_songlist.cell(row=row_num, column=17).value = f'=UPPER(B{row_num})'
+        # Title CAPS formula
+        ws_songlist.cell(row=row_num, column=18).value = f'=UPPER(C{row_num})'
+        # Timestamp formula: m:ss - m:ss
+        ws_songlist.cell(row=row_num, column=19).value = f'=INT(J{row_num}/60)&":"&TEXT(MOD(J{row_num},60),"00")&" - "&INT(K{row_num}/60)&":"&TEXT(MOD(K{row_num},60),"00")'
 
         # Mark errors with red background
         if result['errors2']:
-            for col in range(1, 15):
+            for col in range(1, 20):
                 ws_songlist.cell(row=row_num, column=col).fill = error_fill
 
         row_num += 1
@@ -789,6 +810,11 @@ def process_songwishes(input_file, output_file, form_url=FORM_URL):
     ws_songlist.column_dimensions['L'].width = 5
     ws_songlist.column_dimensions['M'].width = 40
     ws_songlist.column_dimensions['N'].width = 50
+    ws_songlist.column_dimensions['O'].width = 10
+    ws_songlist.column_dimensions['P'].width = 10
+    ws_songlist.column_dimensions['Q'].width = 20
+    ws_songlist.column_dimensions['R'].width = 30
+    ws_songlist.column_dimensions['S'].width = 20
 
     # Save
     wb.save(output_file)
